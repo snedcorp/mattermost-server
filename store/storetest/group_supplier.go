@@ -1583,10 +1583,12 @@ func testGetGroupsByChannel(t *testing.T, ss store.Store) {
 		Page      int
 		PerPage   int
 		Result    []*model.Group
+		Opts      model.GroupSearchOpts
 	}{
 		{
 			Name:      "Get the two Groups for Channel1",
 			ChannelId: channel1.Id,
+			Opts:      model.GroupSearchOpts{},
 			Page:      0,
 			PerPage:   60,
 			Result:    []*model.Group{group1, group2},
@@ -1594,6 +1596,7 @@ func testGetGroupsByChannel(t *testing.T, ss store.Store) {
 		{
 			Name:      "Get first Group for Channel1 with page 0 with 1 element",
 			ChannelId: channel1.Id,
+			Opts:      model.GroupSearchOpts{},
 			Page:      0,
 			PerPage:   1,
 			Result:    []*model.Group{group1},
@@ -1601,6 +1604,7 @@ func testGetGroupsByChannel(t *testing.T, ss store.Store) {
 		{
 			Name:      "Get second Group for Channel1 with page 1 with 1 element",
 			ChannelId: channel1.Id,
+			Opts:      model.GroupSearchOpts{},
 			Page:      1,
 			PerPage:   1,
 			Result:    []*model.Group{group2},
@@ -1608,6 +1612,7 @@ func testGetGroupsByChannel(t *testing.T, ss store.Store) {
 		{
 			Name:      "Get third Group for Channel2",
 			ChannelId: channel2.Id,
+			Opts:      model.GroupSearchOpts{},
 			Page:      0,
 			PerPage:   60,
 			Result:    []*model.Group{group3},
@@ -1615,6 +1620,7 @@ func testGetGroupsByChannel(t *testing.T, ss store.Store) {
 		{
 			Name:      "Get empty Groups for a fake id",
 			ChannelId: model.NewId(),
+			Opts:      model.GroupSearchOpts{},
 			Page:      0,
 			PerPage:   60,
 			Result:    []*model.Group{},
@@ -1623,7 +1629,12 @@ func testGetGroupsByChannel(t *testing.T, ss store.Store) {
 
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
-			res := <-ss.Group().GetGroupsByChannel(tc.ChannelId, tc.Page, tc.PerPage)
+			if tc.Opts.PageOpts == nil {
+				tc.Opts.PageOpts = &model.PageOpts{}
+			}
+			tc.Opts.PageOpts.Page = tc.Page
+			tc.Opts.PageOpts.PerPage = tc.PerPage
+			res := <-ss.Group().GetGroupsByChannel(tc.ChannelId, tc.Opts)
 			require.Nil(t, res.Err)
 			require.ElementsMatch(t, tc.Result, res.Data.([]*model.Group))
 		})

@@ -221,13 +221,13 @@ func (_m *GroupStore) GetGroupSyncable(groupID string, syncableID string, syncab
 	return r0
 }
 
-// GetGroupsByChannel provides a mock function with given fields: channelId, page, perPage
-func (_m *GroupStore) GetGroupsByChannel(channelId string, page int, perPage int) store.StoreChannel {
-	ret := _m.Called(channelId, page, perPage)
+// GetGroups provides a mock function with given fields: page, perPage, opts
+func (_m *GroupStore) GetGroups(page int, perPage int, opts model.GroupSearchOpts) store.StoreChannel {
+	ret := _m.Called(page, perPage, opts)
 
 	var r0 store.StoreChannel
-	if rf, ok := ret.Get(0).(func(string, int, int) store.StoreChannel); ok {
-		r0 = rf(channelId, page, perPage)
+	if rf, ok := ret.Get(0).(func(int, int, model.GroupSearchOpts) store.StoreChannel); ok {
+		r0 = rf(page, perPage, opts)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(store.StoreChannel)
@@ -237,7 +237,23 @@ func (_m *GroupStore) GetGroupsByChannel(channelId string, page int, perPage int
 	return r0
 }
 
-// GetGroupsByTeam provides a mock function with given fields: teamId, page, perPage
+// GetGroupsByChannel provides a mock function with given fields: channelId, opts
+func (_m *GroupStore) GetGroupsByChannel(channelId string, opts model.GroupSearchOpts) store.StoreChannel {
+	ret := _m.Called(channelId, opts)
+
+	var r0 store.StoreChannel
+	if rf, ok := ret.Get(0).(func(string, model.GroupSearchOpts) store.StoreChannel); ok {
+		r0 = rf(channelId, opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.StoreChannel)
+		}
+	}
+
+	return r0
+}
+
+// GetGroupsByTeam provides a mock function with given fields: teamId, opts
 func (_m *GroupStore) GetGroupsByTeam(teamId string, opts model.GroupSearchOpts) store.StoreChannel {
 	ret := _m.Called(teamId, opts)
 
@@ -356,22 +372,6 @@ func (_m *GroupStore) UpdateGroupSyncable(groupSyncable *model.GroupSyncable) st
 	var r0 store.StoreChannel
 	if rf, ok := ret.Get(0).(func(*model.GroupSyncable) store.StoreChannel); ok {
 		r0 = rf(groupSyncable)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(store.StoreChannel)
-		}
-	}
-
-	return r0
-}
-
-// UpdateGroupSyncable provides a mock function with given fields: groupSyncable
-func (_m *GroupStore) GetGroups(page int, perPage int, opts model.GroupSearchOpts) store.StoreChannel {
-	ret := _m.Called(page, perPage, opts)
-
-	var r0 store.StoreChannel
-	if rf, ok := ret.Get(0).(func(int, int, model.GroupSearchOpts) store.StoreChannel); ok {
-		r0 = rf(page, perPage, opts)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(store.StoreChannel)

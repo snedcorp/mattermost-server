@@ -109,8 +109,8 @@ func (s *LocalCacheSupplier) ChannelMembersToRemove(ctx context.Context, hints .
 	return s.Next().ChannelMembersToRemove(ctx, hints...)
 }
 
-func (s *LocalCacheSupplier) GetGroupsByChannel(ctx context.Context, channelId string, page, perPage int, hints ...LayeredStoreHint) *LayeredStoreSupplierResult {
-	return s.Next().GetGroupsByChannel(ctx, channelId, page, perPage, hints...)
+func (s *LocalCacheSupplier) GetGroupsByChannel(ctx context.Context, channelId string, opts model.GroupSearchOpts, hints ...LayeredStoreHint) *LayeredStoreSupplierResult {
+	return s.Next().GetGroupsByChannel(ctx, channelId, opts, hints...)
 }
 
 func (s *LocalCacheSupplier) GetGroupsByTeam(ctx context.Context, teamId string, opts model.GroupSearchOpts, hints ...LayeredStoreHint) *LayeredStoreSupplierResult {

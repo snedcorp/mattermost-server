@@ -810,30 +810,48 @@ func (s *SqlSupplier) TeamMembersToRemove(ctx context.Context, hints ...store.La
 	return result
 }
 
-func (s *SqlSupplier) GetGroupsByChannel(ctx context.Context, channelId string, page, perPage int, hints ...store.LayeredStoreHint) *store.LayeredStoreSupplierResult {
+func (s *SqlSupplier) GetGroupsByChannel(ctx context.Context, channelId string, opts model.GroupSearchOpts, hints ...store.LayeredStoreHint) *store.LayeredStoreSupplierResult {
 	result := store.NewSupplierResult()
 
-	var groups []*model.Group
-	offset := page * perPage
-	_, err := s.GetReplica().Select(&groups, `
-		SELECT
-			ug.*
-		FROM
-			GroupChannels gc
-		LEFT JOIN
-			UserGroups ug
-		ON
-			gc.GroupId = ug.Id
-		WHERE
-			ug.DeleteAt = 0
-		AND
-			gc.ChannelId = :ChannelId
-		ORDER BY
-			ug.DisplayName
-		LIMIT :Limit
-		OFFSET :Offset`,
-		map[string]interface{}{"ChannelId": channelId, "Limit": perPage, "Offset": offset})
+	query := s.getQueryBuilder().
+		Select("ug.*").
+		From("GroupChannels gc").
+		LeftJoin("UserGroups ug ON gc.GroupId = ug.Id").
+		Where("ug.DeleteAt = 0 AND gc.ChannelId = ? AND gc.DeleteAt = 0", channelId)
 
+	if opts.IncludeMemberCount {
+		query = s.getQueryBuilder().
+			Select("ug.*, coalesce(Members.MemberCount, 0) AS MemberCount").
+			From("UserGroups ug").
+			LeftJoin("(SELECT GroupMembers.GroupId, COUNT(*) AS MemberCount FROM GroupMembers WHERE GroupMembers.DeleteAt = 0 GROUP BY GroupId) AS Members ON Members.GroupId = ug.Id").
+			LeftJoin("GroupChannels ON GroupChannels.GroupId = ug.Id").
+			Where("GroupChannels.DeleteAt = 0 AND GroupChannels.ChannelId = ?", channelId).
+			OrderBy("ug.DisplayName")
+	}
+
+	if len(opts.Q) > 0 {
+		pattern := fmt.Sprintf("%%%s%%", opts.Q)
+		operatorKeyword := "ILIKE"
+		if s.DriverName() == model.DATABASE_DRIVER_MYSQL {
+			operatorKeyword = "LIKE"
+		}
+		query = query.Where(fmt.Sprintf("(ug.Name %[1]s ? OR ug.DisplayName %[1]s ?)", operatorKeyword), pattern, pattern)
+	}
+
+	if opts.PageOpts != nil {
+		offset := uint64(opts.PageOpts.Page * opts.PageOpts.PerPage)
+		query = query.OrderBy("ug.DisplayName").Limit(uint64(opts.PageOpts.PerPage)).Offset(offset)
+	}
+
+	queryString, args, err := query.ToSql()
+	if err != nil {
+		result.Err = model.NewAppError("SqlGroupStore.GetGroupsByChannel", "store.sql_group.app_error", nil, err.Error(), http.StatusInternalServerError)
+		return result
+	}
+
+	var groups []*model.Group
+
+	_, err = s.GetReplica().Select(&groups, queryString, args...)
 	if err != nil {
 		result.Err = model.NewAppError("SqlGroupStore.GetGroupsByChannel", "store.select_error", nil, err.Error(), http.StatusInternalServerError)
 		return result
@@ -979,6 +997,22 @@ func (s *SqlSupplier) GetGroups(ctx context.Context, page, perPage int, opts mod
 					AND GroupTeams.TeamId = ?
 			)
 		`, opts.NotAssociatedToTeam)
+	}
+
+	if len(opts.NotAssociatedToChannel) == 26 {
+		groupsQuery = groupsQuery.Where(`
+			g.Id NOT IN (
+				SELECT 
+					Id 
+				FROM 
+					UserGroups
+					JOIN GroupChannels ON GroupChannels.GroupId = UserGroups.Id
+				WHERE 
+					GroupChannels.DeleteAt = 0
+					AND UserGroups.DeleteAt = 0
+					AND GroupChannels.ChannelId = ?
+			)
+		`, opts.NotAssociatedToChannel)
 	}
 
 	queryString, args, err := groupsQuery.ToSql()
